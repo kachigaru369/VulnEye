@@ -63,7 +63,8 @@ def redirection_scanner():
     redir_url = url_compare(url)
 
     if redir_url and check_login(redir_url):
-        cookies, session, response_text = html_field_finder.login_to_site(redir_url)
+        cookies, session = html_field_finder.login_to_site(redir_url)
+        # , response_text 
         if cookies:
             print(cookies)
             print("[+++] Now we can attack...")
@@ -146,5 +147,5 @@ def check_login(html):
 # def attack():
 
 
-if __name__ == "__main__":
-    redirection_scanner()
+# if __name__ == "__main__":
+#     redirection_scanner()

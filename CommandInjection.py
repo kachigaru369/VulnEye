@@ -56,7 +56,8 @@ SUBMIT_FIELD_KEYS = [
 #     else:
 #         print("[-] No suspicious CMDi-related input fields found.")
 
-
+def starter():
+    check_redir()
 
 def find_cmdi_inputs(url, session):
     response = session.get(url)
@@ -105,6 +106,5 @@ def check_redir():
 
 
 
-if __name__ == "__main__":
-    check_redir()
-
+# if __name__ == "__main__":
+#     starter()

@@ -138,10 +138,10 @@ def login_to_site(url):
     if is_login_successful(login_response):
         cookies_dict = session.cookies.get_dict()
         last_responce = login_response.text
-        return cookies_dict, session, last_responce
+        return cookies_dict, session #, last_responce
     else:
         print("[!] Login failed.")
-        return None, None, None
+        return None, None #, None
 
 
 
@@ -173,5 +173,5 @@ def is_login_successful(response):
 
 # login_to_site("http://example.com/login")
 
-if __name__ == "__main__":
-    login_to_site()
+# if __name__ == "__main__":
+#     login_to_site()
