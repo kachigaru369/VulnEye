@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
-import sys
+import sys , os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "core")))
 from pyfiglet import figlet_format
 from colorama import init, Fore, Style
 import CommandInjection
+
 # import SqlInjection
 # import XssScanner
 

@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import RedirectionScanner
+from ai_assistants import smart_login_analyzer
+
 
 
 CMDI_FIELD_KEYS = [
@@ -57,7 +59,7 @@ SUBMIT_FIELD_KEYS = [
 #         print("[-] No suspicious CMDi-related input fields found.")
 
 def starter():
-    check_redir()
+    smart_login_analyzer.intelligent_login_handler()
 
 def find_cmdi_inputs(url, session):
     response = session.get(url)

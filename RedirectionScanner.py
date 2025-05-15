@@ -124,6 +124,7 @@ def redirection_scanner():
 
 
 def url_compare(url_c):
+    print("comparing url...")
     if "http" in url_c:
         final_url = requests.get(url_c, allow_redirects=True)
     
@@ -137,6 +138,7 @@ def url_compare(url_c):
 
 
 def check_login(html):
+    print("checking the html of redirect url...")
     return any(tag in html.lower() for tag in html_check_list)
 
 

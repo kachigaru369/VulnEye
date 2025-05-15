@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 # import pickle
 from urllib.parse import urljoin
+from ai_assistants.form_classifier import extract_inputs_from_html, classify_form
+
 
 
 # لیست اسم‌های احتمالی برای فیلد یوزرنیم و پسورد
@@ -10,6 +12,7 @@ PASSWORD_KEYS = ['password', 'pass', 'passwd']
 
 
 def find_login_fields(soup):
+    print("findig login fields...")
     form = soup.find('form')
     if not form:
         print("[!] No form found.")
@@ -101,10 +104,54 @@ def find_login_fields(soup):
 #     # my_cookie = cookies_dict['PHPSESSID']
 
 
+#                          مهم 
+# def login_to_site(url):
+#     session = requests.Session()
+#     response = session.get(url)
+#     soup = BeautifulSoup(response.text, 'html.parser')
+
+#     form_data = find_login_fields(soup)
+#     if not form_data:
+#         return None, None
+
+#     user_value = input("Enter username: ")
+#     pass_value = input("Enter password: ")
+
+#     post_data = form_data['others']
+#     post_data[form_data['username']] = user_value
+#     post_data[form_data['password']] = pass_value
+
+#     if form_data['submit']:
+#         post_data[form_data['submit']] = 'Submit'
+
+#     login_url = form_data['action']
+#     if not login_url.startswith("http"):
+#         login_url = urljoin(url, login_url)
+
+#     print("[*] Sending login request to:", login_url)
+
+#     if form_data['method'] == 'post':
+#         login_response = session.post(login_url, data=post_data)
+#     else:
+#         login_response = session.get(login_url, params=post_data)
+
+#     print("[+] Response code:", login_response.status_code)
+
 
 def login_to_site(url):
+    print("trying login to redirection url...")
     session = requests.Session()
-    response = session.get(url)
+    response = session.get(url, allow_redirects=True)
+
+# showing first coockie
+    print("[*] Session cookies BEFORE login:")
+    print(session.cookies.get_dict())
+
+
+    
+    final_url = response.url
+    print(f"[*] Landed on: {final_url}")
+
     soup = BeautifulSoup(response.text, 'html.parser')
 
     form_data = find_login_fields(soup)
@@ -123,7 +170,8 @@ def login_to_site(url):
 
     login_url = form_data['action']
     if not login_url.startswith("http"):
-        login_url = urljoin(url, login_url)
+        login_url = urljoin(final_url, login_url)
+
 
     print("[*] Sending login request to:", login_url)
 
@@ -134,20 +182,38 @@ def login_to_site(url):
 
     print("[+] Response code:", login_response.status_code)
 
+    # showing login coockie
+    print("[*] Session cookies AFTER login:")
+    print(session.cookies.get_dict())
+
     # بررسی موفقیت لاگین
     if is_login_successful(login_response):
         cookies_dict = session.cookies.get_dict()
         last_responce = login_response.text
-        return cookies_dict, session #, last_responce
+
+        # 📌 بعد از لاگین، رفتن به صفحه و بررسی فرم‌ها
+        target_page_url = url  # یا صفحه‌ای که می‌دونی بعد از لاگین هست (مثلاً dashboard)
+        response = session.get(target_page_url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        forms = soup.find_all("form")
+        for i, form in enumerate(forms):
+            inputs = extract_inputs_from_html(str(form))
+            form_type = classify_form(inputs)
+            print(f"[Form {i+1}] Type Detected by AI: {form_type}")
+        return cookies_dict, session
     else:
         print("[!] Login failed.")
-        return None, None #, None
+        return None, None
+
+
 
 
 
 
 
 def is_login_successful(response):
+    print("checking login status...")
     failed_indicators = ["invalid", "wrong password", "login failed", "try again"]
     if any(word in response.text.lower() for word in failed_indicators):
         return False
