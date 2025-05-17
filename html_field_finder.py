@@ -29,7 +29,16 @@ def find_login_fields(soup):
 
     for input_tag in inputs:
         name = input_tag.get('name', '')
-        input_type = input_tag.get('type', '').lower()
+        if input_tag.name != 'input':
+            input_type = input_tag.name
+        else:
+            input_type = input_tag.get('type')
+            if input_type:
+                input_type = input_type.lower()
+            else:
+                input_type = 'text'
+        print(f"  [DEBUG] Field name: {input_tag.get('name')}, tag: {input_tag.name}, type: {input_type}")
+ 
 
         # فیلد یوزرنیم
         if not user_field and any(key in name.lower() for key in USERNAME_KEYS):

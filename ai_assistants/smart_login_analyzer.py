@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 from ai_assistants.form_classifier import extract_inputs_from_html, classify_form
 import html_field_finder  # فایل جداگانه‌ای که login_to_site و find_login_fields در آن است
 from ai_assistants.vuln_predictor import predict_vulnerabilities
+from core import SQLInjection
 
 
 def is_login_form_present(html):
@@ -20,27 +21,38 @@ def is_login_form_present(html):
 def analyze_forms_with_ai(session, url):
     print("analyzing forms with ai...")
     response = session.get(url)
+    
+    if "session-input.php" in response.text:
+        print("[!] Detected JavaScript popup form (e.g., session-input.php). May require separate manual or scripted handling.")
+
     soup = BeautifulSoup(response.text, 'html.parser')
     forms = soup.find_all("form")
 
     print(f"\n[*] Found {len(forms)} form(s). Analyzing with AI...")
     for i, form in enumerate(forms):
         inputs = extract_inputs_from_html(str(form))
-
-        print(f"  [DEBUG] Raw inputs: {inputs}")
+        print(f"[Form {i+1}] Fields: {inputs}")
 
         form_type = classify_form(inputs)
-        
         vulns = predict_vulnerabilities(form_type)
-    print(f"[Form {i+1}] Type Detected by AI: {form_type}")
-    if vulns:
-        print(f"  ↳ Possible Vulnerabilities: {', '.join(vulns)}")
-    else:
-        print(f"  ↳ No known vulnerabilities mapped to this form type.")
-
 
         print(f"[Form {i+1}] Type Detected by AI: {form_type}")
-    
+        if vulns:
+            print(f"  ↳ Possible Vulnerabilities: {', '.join(vulns)}")
+        else:
+            print(f"  ↳ No known vulnerabilities mapped to this form type.")
+
+        # ✅ اجرای ماژول فقط در صورت تشخیص آسیب‌پذیری مرتبط
+        if "SQL Injection" in vulns or "SQL Injection (Blind)" in vulns:
+            print("[*] Launching SQL Injection module on this form...")
+            from core import SQLInjection
+            SQLInjection.starter(url, session)
+
+        elif "Command Injection" in vulns:
+            print("[*] Launching Command Injection module on this form...")
+            from core import CommandInjection
+            CommandInjection.starter(url, session)
+   
     
 
 # مکان شروع حمله!!!!!!!!!!!!!!!!!!!!!!!!!

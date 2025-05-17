@@ -25,8 +25,12 @@ form_vuln_map = {
     "api": [
         "API", "Authorisation Bypass", "Cryptography"
     ],
+    "sqli": [  # 👈 این خط رو اضافه کن
+        "SQL Injection", "SQL Injection (Blind)"
+    ],
     "unknown": []
 }
+
 
 
 def predict_vulnerabilities(form_type: str) -> list[str]:
